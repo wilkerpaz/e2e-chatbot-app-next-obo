@@ -124,7 +124,10 @@ export const databricksFetch: typeof fetch = async (input, init) => {
             ...body.context,
             conversation_id: conversationId,
             user_id: userId,
-            user_email: userEmail,
+          },
+          custom_inputs: {
+            session_id: conversationId,
+            user_id: userEmail,
           },
         };
         requestInit = { ...requestInit, body: JSON.stringify(enhancedBody) };
