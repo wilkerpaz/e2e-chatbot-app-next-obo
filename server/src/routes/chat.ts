@@ -57,6 +57,7 @@ import {
   type VisibilityType,
   CONTEXT_HEADER_CONVERSATION_ID,
   CONTEXT_HEADER_USER_ID,
+  CONTEXT_HEADER_USER_EMAIL,
 } from '@chat-template/core';
 import { ChatSDKError } from '@chat-template/core/errors';
 
@@ -230,7 +231,8 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
       messages: await convertToModelMessages(uiMessages),
       headers: {
         [CONTEXT_HEADER_CONVERSATION_ID]: id,
-        [CONTEXT_HEADER_USER_ID]: session.user.email ?? session.user.id,
+        [CONTEXT_HEADER_USER_ID]: session.user.id,
+        [CONTEXT_HEADER_USER_EMAIL]: session.user.email,
       },
       onFinish: ({ usage }) => {
         finalUsage = usage;

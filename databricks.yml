@@ -48,7 +48,6 @@ resources:
 targets:
   dev:
     mode: development
-    default: true
     variables:
       resource_name_suffix: dev-${workspace.current_user.domain_friendly_name}
 
@@ -59,5 +58,6 @@ targets:
 
   prod:
     mode: production
+    default: true
     variables:
       resource_name_suffix: "prod"

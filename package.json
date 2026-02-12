@@ -47,7 +47,10 @@
     "@types/node": "^22.8.6",
     "concurrently": "^8.2.2",
     "msw": "^2.11.6",
-    "tsdown": "0.15.9",
+    "tsdown": "^0.16.0",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "tsx": "^4.19.1"
   }
 }
