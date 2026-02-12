@@ -122,12 +122,13 @@ export const databricksFetch: typeof fetch = async (input, init) => {
     if (shouldInjectContext()) {
       try {
         const body = JSON.parse(requestInit.body);
+
         const enhancedBody = {
           ...body,
           context: {
             ...body.context,
             conversation_id: conversationId,
-            user_id: userId,
+            user_id: userEmail,
           },
           custom_inputs: {
             session_id: conversationId,

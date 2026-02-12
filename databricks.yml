@@ -10,6 +10,8 @@ variables:
     description: "Name of the model serving endpoint to be used by the app Knowledge Assistant"
     # TODO: uncomment the line below and specify a default value to avoid needing to specify it on each deployment
     # default: "your-serving-endpoint-name-goes-here"
+  genie_apace_id:
+    description: "ID of the Genie Apache agent to be used by the app"
   experiment_id:
     description: "ID of the MLflow Experiment used by the Agent"
     # TODO: uncomment the line below and specify a default value to avoid needing to specify it on each deployment
@@ -62,6 +64,12 @@ resources:
           serving_endpoint_ka:
             name: ${var.serving_endpoint_ka_name}
             permission: CAN_QUERY
+        - name: genie-space
+          description: "Genie Apache agent for the AI agent to query for information about the Databricks workspace"
+          genie_agent:
+            apace_id: ${var.genie_apace_id}
+            permission: CAN_QUERY
+
 
 targets:
   dev:

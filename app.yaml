@@ -7,3 +7,6 @@ env:
 
   - name: DATABRICKS_SERVING_ENDPOINT_KA
     valueFrom: serving-endpoint-ka
+
+  - name: DATABRICKS_GENIE_SPACE_ID
+    valueFrom: genie-space
