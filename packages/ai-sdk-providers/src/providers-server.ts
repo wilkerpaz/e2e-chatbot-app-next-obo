@@ -250,27 +250,35 @@ async function getOrCreateDatabricksProvider(): Promise<CachedProvider> {
   const hostname = await getWorkspaceHostname();
 
   // Create provider with fetch that always uses fresh token
-const provider = createDatabricksProvider({
-  // When using endpoints such as Agent Bricks or custom agents, we need to use remote tool calling to handle the tool calls
-  useRemoteToolCalling: true,
-  baseURL: `${hostname}/serving-endpoints`,
-  formatUrl: ({ baseUrl, path }) => API_PROXY ?? `${baseUrl}${path}`,
-  fetch: async (...[input, init]: Parameters<typeof fetch>) => {
-    const headers = new Headers(init?.headers);
+  const provider = createDatabricksProvider({
+    // When using endpoints such as Agent Bricks or custom agents, we need to use remote tool calling to handle the tool calls
+    useRemoteToolCalling: true,
+    baseURL: `${hostname}/serving-endpoints`,
+    formatUrl: ({ baseUrl, path }) => API_PROXY ?? `${baseUrl}${path}`,
+    fetch: async (...[input, init]: Parameters<typeof fetch>) => {
+      const headers = new Headers(init?.headers);
 
-    // Prioritize user's OBO token from headers if available.
-    const userAccessToken = headers.get(CONTEXT_HEADER_ACCESS_TOKEN);
+      // Prioritize user's OBO token from headers if available.
+      const userAccessToken = headers.get(CONTEXT_HEADER_ACCESS_TOKEN);
 
-    // If we have a user token, use it. Otherwise, fall back to the service principal token.
-    const currentToken = userAccessToken || (await getProviderToken());
-    headers.set('Authorization', `Bearer ${currentToken}`);
+      if (userAccessToken) {
+        console.log('[Auth] Using User OBO Token for request');
+      } else {
+        console.log(
+          '[Auth] User OBO Token missing/undefined in headers, falling back to Service Principal',
+        );
+      }
 
-    return databricksFetch(input, {
-      ...init,
-      headers,
-    });
-  },
-});
+      // If we have a user token, use it. Otherwise, fall back to the service principal token.
+      const currentToken = userAccessToken || (await getProviderToken());
+      headers.set('Authorization', `Bearer ${currentToken}`);
+
+      return databricksFetch(input, {
+        ...init,
+        headers,
+      });
+    },
+  });
 
   oauthProviderCache = provider;
   oauthProviderCacheTime = Date.now();
