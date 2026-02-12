@@ -16,6 +16,7 @@ import { shouldInjectContextForEndpoint } from './request-context';
 export const CONTEXT_HEADER_CONVERSATION_ID = 'x-databricks-conversation-id';
 export const CONTEXT_HEADER_USER_ID = 'x-databricks-user-id';
 export const CONTEXT_HEADER_USER_EMAIL = 'x-databricks-user-email';
+export const CONTEXT_HEADER_ACCESS_TOKEN = 'x-databricks-access-token';
 
 // Use centralized authentication - only on server side
 async function getProviderToken(): Promise<string> {
@@ -107,6 +108,9 @@ export const databricksFetch: typeof fetch = async (input, init) => {
   const conversationId = headers.get(CONTEXT_HEADER_CONVERSATION_ID);
   const userId = headers.get(CONTEXT_HEADER_USER_ID);
   const userEmail = headers.get(CONTEXT_HEADER_USER_EMAIL);
+  // The access token is handled in the outer fetch wrapper, but we clean it up here
+  // to avoid sending it downstream.
+  headers.delete(CONTEXT_HEADER_ACCESS_TOKEN);
   // Remove context headers so they don't get sent to the API
   headers.delete(CONTEXT_HEADER_CONVERSATION_ID);
   headers.delete(CONTEXT_HEADER_USER_ID);
@@ -120,6 +124,7 @@ export const databricksFetch: typeof fetch = async (input, init) => {
         const body = JSON.parse(requestInit.body);
         const enhancedBody = {
           ...body,
+          session_id: conversationId,
           context: {
             ...body.context,
             conversation_id: conversationId,
@@ -251,9 +256,13 @@ const provider = createDatabricksProvider({
   baseURL: `${hostname}/serving-endpoints`,
   formatUrl: ({ baseUrl, path }) => API_PROXY ?? `${baseUrl}${path}`,
   fetch: async (...[input, init]: Parameters<typeof fetch>) => {
-    // Always get fresh token for each request (will use cache if valid)
-    const currentToken = await getProviderToken();
     const headers = new Headers(init?.headers);
+
+    // Prioritize user's OBO token from headers if available.
+    const userAccessToken = headers.get(CONTEXT_HEADER_ACCESS_TOKEN);
+
+    // If we have a user token, use it. Otherwise, fall back to the service principal token.
+    const currentToken = userAccessToken || (await getProviderToken());
     headers.set('Authorization', `Bearer ${currentToken}`);
 
     return databricksFetch(input, {

@@ -24,6 +24,7 @@ export interface AuthUser {
 
 export interface AuthSession {
   user: AuthUser;
+  accessToken?: string;
 }
 
 export interface ClientSession {
@@ -556,6 +557,7 @@ export async function getAuthSession({
       const forwardedPreferredUsername = getRequestHeader(
         'X-Forwarded-Preferred-Username',
       );
+      const accessToken = getRequestHeader('X-Forwarded-Access-Token');
 
       // Get user from headers
       const user = await getUserFromHeaders({ getRequestHeader });
@@ -568,6 +570,7 @@ export async function getAuthSession({
           preferredUsername: forwardedPreferredUsername || undefined,
           type: 'regular',
         },
+        accessToken: accessToken || undefined,
       };
     }
 
@@ -592,6 +595,10 @@ export async function getAuthSession({
       },
     });
 
+    // For local development, we can use the CLI token or SP token as the "user" token
+    // to simulate OBO behavior if needed.
+    const localToken = getAuthMethod() === 'cli' ? await getDatabricksCliToken() : await getDatabricksToken();
+
     return {
       user: {
         id: user.id,
@@ -600,6 +607,7 @@ export async function getAuthSession({
         preferredUsername: scimUser.userName,
         type: 'regular',
       },
+      accessToken: localToken,
     };
   } catch (error) {
     console.error('[getAuthSession] Failed to get session:', error);

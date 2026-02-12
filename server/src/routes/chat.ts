@@ -58,6 +58,7 @@ import {
   CONTEXT_HEADER_CONVERSATION_ID,
   CONTEXT_HEADER_USER_ID,
   CONTEXT_HEADER_USER_EMAIL,
+  CONTEXT_HEADER_ACCESS_TOKEN,
 } from '@chat-template/core';
 import { ChatSDKError } from '@chat-template/core/errors';
 
@@ -233,6 +234,7 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
         [CONTEXT_HEADER_CONVERSATION_ID]: id,
         [CONTEXT_HEADER_USER_ID]: session.user.id,
         [CONTEXT_HEADER_USER_EMAIL]: session.user.email,
+        [CONTEXT_HEADER_ACCESS_TOKEN]: session.accessToken,
       },
       onFinish: ({ usage }) => {
         finalUsage = usage;
