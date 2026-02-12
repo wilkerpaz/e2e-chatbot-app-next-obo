@@ -21,30 +21,29 @@ import { config } from 'dotenv';
  * Run specific mode: npm run test:with-db or npm run test:ephemeral
  */
 
-// Determine which mode to run (default: with-db)
-const TEST_MODE = process.env.TEST_MODE || 'with-db';
-
 // Load .env
-if (TEST_MODE === 'with-db') {
-  config({ path: ['.env'] });
-}
+config({ path: ['.env'] });
 
-console.log(`[Playwright] Running in "${TEST_MODE}" mode)`);
+const hasDatabaseVars =
+  process.env.POSTGRES_URL || (process.env.PGHOST && process.env.PGDATABASE);
+
+// Determine which mode to run (default: with-db if DB vars present, else ephemeral)
+const TEST_MODE = process.env.TEST_MODE || (hasDatabaseVars ? 'with-db' : 'ephemeral');
+
+console.log(`[Playwright] Running in "${TEST_MODE}" mode`);
 
 // For with-db mode, verify database is available
 if (TEST_MODE === 'with-db') {
-  const hasDatabaseVars =
-    process.env.POSTGRES_URL || (process.env.PGHOST && process.env.PGDATABASE);
-
   if (!hasDatabaseVars) {
-    console.error(
-      '\n❌ ERROR: Running with-db tests but no database configuration found!',
+    throw new Error(
+      [
+        '❌ ERROR: Running with-db tests but no database configuration found!',
+        'Expected POSTGRES_URL or PGHOST+PGDATABASE in .env',
+        'Please either:',
+        '  1. Add database configuration to .env, or',
+        '  2. Run ephemeral tests instead: npm run test:ephemeral',
+      ].join('\n'),
     );
-    console.error('Expected POSTGRES_URL or PGHOST+PGDATABASE in .env');
-    console.error('\nPlease either:');
-    console.error('  1. Add database configuration to .env, or');
-    console.error('  2. Run ephemeral tests instead: npm run test:ephemeral\n');
-    process.exit(0);
   }
 
   console.log('✓ Database configuration found, tests will use database');
@@ -110,8 +109,8 @@ export default defineConfig({
   // Start dev server before running tests
   webServer: {
     command: 'npm run dev',
-    url: `${baseURL}/ping`,
-    timeout: 20 * 1000,
+    url: `${baseURL}/`,
+    timeout: 120 * 1000,
     reuseExistingServer: !process.env.CI,
     // Mock the environment variables for the server process
     env: {

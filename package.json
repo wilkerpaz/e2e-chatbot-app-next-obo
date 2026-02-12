@@ -1,5 +1,5 @@
 {
-  "name": "databricks/e2e-chatbot-app",
+  "name": "@databricks/e2e-chatbot-app",
   "version": "1.0.0",
   "private": true,
   "workspaces": [
@@ -51,6 +51,7 @@
     "typescript": "^5.9.3"
   },
   "overrides": {
-    "tsx": "^4.19.1"
+    "tsx": "^4.19.1",
+    "prismjs": "^1.29.0"
   }
 }
