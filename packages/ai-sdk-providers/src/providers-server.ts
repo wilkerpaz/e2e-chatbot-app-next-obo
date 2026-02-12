@@ -17,6 +17,11 @@ import * as mlflow from 'mlflow-tracing';
 // This allows the Node.js app to log traces directly to Databricks MLflow
 try {
   if (process.env.MLFLOW_EXPERIMENT_ID) {
+    // Ensure DATABRICKS_HOST has protocol if it exists, as mlflow-tracing requires it
+    if (process.env.DATABRICKS_HOST && !process.env.DATABRICKS_HOST.startsWith('http')) {
+      process.env.DATABRICKS_HOST = `https://${process.env.DATABRICKS_HOST}`;
+    }
+
     mlflow.init({
       trackingUri: process.env.MLFLOW_TRACKING_URI || 'databricks',
       experimentId: process.env.MLFLOW_EXPERIMENT_ID,
@@ -139,7 +144,6 @@ export const databricksFetch: typeof fetch = async (input, init) => {
         const body = JSON.parse(requestInit.body);
         const enhancedBody = {
           ...body,
-          session_id: conversationId,
           context: {
             ...body.context,
             conversation_id: conversationId,
