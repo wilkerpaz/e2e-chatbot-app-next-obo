@@ -59,7 +59,7 @@ resources:
             permission: CAN_EDIT
         - name: serving-endpoint-ka
           description: "Databricks serving endpoint name for the AI agent Knowledge Assistant"
-          serving_endpoint:
+          serving_endpoint_ka:
             name: ${var.serving_endpoint_ka_name}
             permission: CAN_QUERY
 

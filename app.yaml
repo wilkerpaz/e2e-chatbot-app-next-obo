@@ -7,6 +7,3 @@ env:
 
   - name: DATABRICKS_SERVING_ENDPOINT_KA
     valueFrom: serving-endpoint-ka
-
-  - name: MLFLOW_EXPERIMENT_ID
-    valueFrom: experiment
