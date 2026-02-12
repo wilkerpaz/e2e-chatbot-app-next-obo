@@ -11,26 +11,6 @@ import {
 import { createDatabricksProvider } from '@databricks/ai-sdk-provider';
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai';
 import { shouldInjectContextForEndpoint } from './request-context';
-import * as mlflow from 'mlflow-tracing';
-
-// Initialize MLflow Tracing if configured
-// This allows the Node.js app to log traces directly to Databricks MLflow
-try {
-  if (process.env.MLFLOW_EXPERIMENT_ID) {
-    // Ensure DATABRICKS_HOST has protocol if it exists, as mlflow-tracing requires it
-    if (process.env.DATABRICKS_HOST && !process.env.DATABRICKS_HOST.startsWith('http')) {
-      process.env.DATABRICKS_HOST = `https://${process.env.DATABRICKS_HOST}`;
-    }
-
-    mlflow.init({
-      trackingUri: process.env.MLFLOW_TRACKING_URI || 'databricks',
-      experimentId: process.env.MLFLOW_EXPERIMENT_ID,
-    });
-    console.log('[MLflow] Client-side tracing initialized');
-  }
-} catch (error) {
-  console.warn('[MLflow] Failed to initialize client-side tracing:', error);
-}
 
 // Header keys for passing context through streamText headers
 export const CONTEXT_HEADER_CONVERSATION_ID = 'x-databricks-conversation-id';
@@ -183,23 +163,7 @@ export const databricksFetch: typeof fetch = async (input, init) => {
     }
   }
 
-  // Wrap the fetch call in an MLflow trace to ensure user attribution
-  // This creates a client-side trace that explicitly logs the user email
-  const tracedFetch = mlflow.trace(
-    async () => {
-      return await fetch(url, requestInit);
-    },
-    {
-      name: 'chat_request',
-      attributes: {
-        user_email: userEmail || 'unknown',
-        conversation_id: conversationId || 'unknown',
-        endpoint: process.env.DATABRICKS_SERVING_ENDPOINT || 'unknown',
-      },
-    },
-  );
-
-  const response = await tracedFetch();
+  const response = await fetch(url, requestInit);
 
   // If SSE logging is enabled and this is a streaming response, wrap the body to log events
   if (LOG_SSE_EVENTS && response.body) {
