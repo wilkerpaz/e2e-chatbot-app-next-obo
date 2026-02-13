@@ -10,3 +10,6 @@ env:
 
   - name: DATABRICKS_GENIE_SPACE_ID
     valueFrom: genie-space
+
+  - name: LOG_SSE_EVENTS
+    value: "true"
