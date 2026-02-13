@@ -123,8 +123,29 @@ export const databricksFetch: typeof fetch = async (input, init) => {
       try {
         const body = JSON.parse(requestInit.body);
 
+        // Extract last user message for 'text' field
+        let lastUserMessageText = '';
+        const messages = body.messages || body.input;
+        if (Array.isArray(messages)) {
+          for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === 'user') {
+              const content = messages[i].content;
+              if (typeof content === 'string') {
+                lastUserMessageText = content;
+              } else if (Array.isArray(content)) {
+                const textPart = content.find((p: any) => p.text && (p.type === 'text' || p.type === 'input_text'));
+                if (textPart) {
+                  lastUserMessageText = textPart.text;
+                }
+              }
+              break;
+            }
+          }
+        }
+
         const enhancedBody = {
           ...body,
+          text: lastUserMessageText,
           context: {
             ...body.context,
             conversation_id: conversationId,

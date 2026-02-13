@@ -271,6 +271,15 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
           'Finished message stream! Saving message...',
           JSON.stringify(responseMessage, null, 2),
         );
+
+        const providerMetadata = await result.providerMetadata;
+        if (providerMetadata) {
+          console.log(
+            '[Chat] Provider Metadata:',
+            JSON.stringify(providerMetadata, null, 2),
+          );
+        }
+
         await saveMessages({
           messages: [
             {
