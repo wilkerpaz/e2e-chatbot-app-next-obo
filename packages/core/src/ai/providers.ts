@@ -10,6 +10,7 @@ export {
   CONTEXT_HEADER_USER_ID,
   CONTEXT_HEADER_USER_EMAIL,
   CONTEXT_HEADER_ACCESS_TOKEN,
+  CONTEXT_HEADER_AGENT_STATE,
 } from '@chat-template/ai-sdk-providers';
 
 // For server-side usage, get the authenticated provider

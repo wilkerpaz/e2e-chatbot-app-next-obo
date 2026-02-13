@@ -59,6 +59,7 @@ import {
   CONTEXT_HEADER_USER_ID,
   CONTEXT_HEADER_USER_EMAIL,
   CONTEXT_HEADER_ACCESS_TOKEN,
+  CONTEXT_HEADER_AGENT_STATE,
 } from '@chat-template/core';
 import { ChatSDKError } from '@chat-template/core/errors';
 
@@ -105,6 +106,8 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
       selectedChatModel: string;
       selectedVisibilityType: VisibilityType;
     } = requestBody;
+
+    const agentState = (req.body as any).agent_state;
 
     const session = req.session;
     if (!session) {
@@ -235,6 +238,7 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
         [CONTEXT_HEADER_USER_ID]: session.user.id,
         [CONTEXT_HEADER_USER_EMAIL]: session.user.email,
         [CONTEXT_HEADER_ACCESS_TOKEN]: session.accessToken,
+        ...(agentState ? { [CONTEXT_HEADER_AGENT_STATE]: JSON.stringify(agentState) } : {}),
       },
       onFinish: ({ usage }) => {
         finalUsage = usage;

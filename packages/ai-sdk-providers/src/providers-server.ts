@@ -17,6 +17,7 @@ export const CONTEXT_HEADER_CONVERSATION_ID = 'x-databricks-conversation-id';
 export const CONTEXT_HEADER_USER_ID = 'x-databricks-user-id';
 export const CONTEXT_HEADER_USER_EMAIL = 'x-databricks-user-email';
 export const CONTEXT_HEADER_ACCESS_TOKEN = 'x-databricks-access-token';
+export const CONTEXT_HEADER_AGENT_STATE = 'x-databricks-agent-state';
 
 // Use centralized authentication - only on server side
 async function getProviderToken(): Promise<string> {
@@ -108,6 +109,7 @@ export const databricksFetch: typeof fetch = async (input, init) => {
   const conversationId = headers.get(CONTEXT_HEADER_CONVERSATION_ID);
   const userId = headers.get(CONTEXT_HEADER_USER_ID);
   const userEmail = headers.get(CONTEXT_HEADER_USER_EMAIL);
+  const agentStateStr = headers.get(CONTEXT_HEADER_AGENT_STATE);
   // The access token is handled in the outer fetch wrapper, but we clean it up here
   // to avoid sending it downstream.
   headers.delete(CONTEXT_HEADER_ACCESS_TOKEN);
@@ -115,6 +117,7 @@ export const databricksFetch: typeof fetch = async (input, init) => {
   headers.delete(CONTEXT_HEADER_CONVERSATION_ID);
   headers.delete(CONTEXT_HEADER_USER_ID);
   headers.delete(CONTEXT_HEADER_USER_EMAIL);
+  headers.delete(CONTEXT_HEADER_AGENT_STATE);
   requestInit = { ...requestInit, headers };
 
   // Inject context into request body if appropriate
@@ -122,30 +125,8 @@ export const databricksFetch: typeof fetch = async (input, init) => {
     if (shouldInjectContext()) {
       try {
         const body = JSON.parse(requestInit.body);
-
-        // Extract last user message for 'text' field
-        let lastUserMessageText = '';
-        const messages = body.messages || body.input;
-        if (Array.isArray(messages)) {
-          for (let i = messages.length - 1; i >= 0; i--) {
-            if (messages[i].role === 'user') {
-              const content = messages[i].content;
-              if (typeof content === 'string') {
-                lastUserMessageText = content;
-              } else if (Array.isArray(content)) {
-                const textPart = content.find((p: any) => p.text && (p.type === 'text' || p.type === 'input_text'));
-                if (textPart) {
-                  lastUserMessageText = textPart.text;
-                }
-              }
-              break;
-            }
-          }
-        }
-
         const enhancedBody = {
           ...body,
-          text: lastUserMessageText,
           context: {
             ...body.context,
             conversation_id: conversationId,
@@ -154,6 +135,7 @@ export const databricksFetch: typeof fetch = async (input, init) => {
           custom_inputs: {
             session_id: conversationId,
             user_id: userEmail,
+            agent_state: agentStateStr ? JSON.parse(agentStateStr) : undefined,
           },
         };
         requestInit = { ...requestInit, body: JSON.stringify(enhancedBody) };
