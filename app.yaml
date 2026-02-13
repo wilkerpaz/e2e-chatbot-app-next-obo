@@ -12,4 +12,4 @@ env:
     valueFrom: genie-space
 
   - name: LOG_SSE_EVENTS
-    value: "true"
+    value: "false"

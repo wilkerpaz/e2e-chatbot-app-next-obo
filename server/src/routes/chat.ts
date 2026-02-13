@@ -269,6 +269,16 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
             },
           }),
         );
+
+        // Send provider metadata (custom_outputs) to the client as a data part
+        const providerMetadata = await result.providerMetadata;
+        if (providerMetadata) {
+          console.log(
+            '[Chat] Sending metadata to client:',
+            JSON.stringify(providerMetadata, null, 2),
+          );
+          writer.write({ type: 'data-json', data: providerMetadata });
+        }
       },
       onFinish: async ({ responseMessage }) => {
         console.log(
