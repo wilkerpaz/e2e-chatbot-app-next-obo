@@ -62,6 +62,7 @@ import {
   CONTEXT_HEADER_AGENT_STATE,
 } from '@chat-template/core';
 import { ChatSDKError } from '@chat-template/core/errors';
+import { getHostUrl } from '@chat-template/utils';
 
 export const chatRouter: RouterType = Router();
 
@@ -251,23 +252,54 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
      */
     const stream = createUIMessageStream({
       execute: async ({ writer }) => {
-        writer.merge(
-          result.toUIMessageStream({
-            originalMessages: uiMessages,
-            generateMessageId: generateUUID,
-            sendReasoning: true,
-            sendSources: true,
-            onError: (error) => {
-              console.error('Stream error:', error);
+        const hostUrl = getHostUrl();
 
-              const errorMessage =
-                error instanceof Error ? error.message : JSON.stringify(error);
+        // Transforma o stream para substituir localhost pela URL de host correta
+        const transformStream = new TransformStream({
+          transform(chunk, controller) {
+            const textChunk = chunk as any;
+            // A regex /http:\/\/localhost:\d+/g captura "http://localhost:" seguido de qualquer porta
+            const urlRegex = /http:\/\/localhost:\d+/g;
 
-              writer.write({ type: 'data-error', data: errorMessage });
+            if (
+              textChunk.type === 'text-delta' &&
+              typeof textChunk.textDelta === 'string'
+            ) {
+              textChunk.textDelta = textChunk.textDelta.replace(
+                urlRegex,
+                hostUrl,
+              );
+            } else if (
+              textChunk.type === 'source-url' &&
+              typeof textChunk.url === 'string'
+            ) {
+              textChunk.url = textChunk.url.replace(urlRegex, hostUrl);
+            }
+            controller.enqueue(textChunk);
+          },
+        });
 
-              return errorMessage;
-            },
-          }),
+        await writer.merge(
+          result
+            .toUIMessageStream({
+              originalMessages: uiMessages,
+              generateMessageId: generateUUID,
+              sendReasoning: true,
+              sendSources: true,
+              onError: (error) => {
+                console.error('Stream error:', error);
+
+                const errorMessage =
+                  error instanceof Error
+                    ? error.message
+                    : JSON.stringify(error);
+
+                writer.write({ type: 'data-error', data: errorMessage });
+
+                return errorMessage;
+              },
+            })
+            .pipeThrough(transformStream),
         );
 
         // Send provider metadata (custom_outputs) to the client as a data part
