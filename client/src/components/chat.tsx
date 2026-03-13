@@ -57,6 +57,12 @@ export function Chat({
   const [_usage, setUsage] = useState<LanguageModelUsage | undefined>(
     initialLastContext,
   );
+  const [agentState, setAgentState] = useState<any | undefined>();
+  // Usar useRef para garantir que prepareSendMessagesRequest acesse o valor atual
+  const agentStateRef = useRef<any | undefined>(agentState);
+  useEffect(() => {
+    agentStateRef.current = agentState;
+  }, [agentState]);
 
   const [lastPart, setLastPart] = useState<UIMessageChunk | undefined>();
   const lastPartRef = useRef<UIMessageChunk | undefined>(lastPart);
@@ -141,13 +147,13 @@ export function Chat({
             // 1. Database is disabled (ephemeral mode) - always need client-side messages
             // 2. Continuation request (tool results) - tool result only exists client-side
             ...(needsPreviousMessages
-              ? {
-                  previousMessages: isUserMessage
-                    ? messages.slice(0, -1)
-                    : messages,
-                }
+              ? { previousMessages: isUserMessage ? messages.slice(0, -1) : messages }
               : {}),
+            // Spread body first to allow default overrides if necessary, though unlikely
             ...body,
+            custom_inputs: {
+              agent_state: agentStateRef.current,
+            },
           },
         };
       },
@@ -164,6 +170,23 @@ export function Chat({
       );
       if (dataPart.type === 'data-usage') {
         setUsage(dataPart.data as LanguageModelUsage);
+      }
+
+      // Decode custom_outputs hidden in data-traceId (Workaround)
+      if (
+        dataPart.type === 'data-traceId' &&
+        typeof dataPart.data === 'string'
+      ) {
+        try {
+          const parsed = JSON.parse(dataPart.data);
+          if (parsed && parsed.source === 'agentCustomOutputs') {
+            if (parsed.payload.agent_state) {
+              setAgentState(parsed.payload.agent_state);
+            }
+          }
+        } catch (e) {
+          // Ignora erros de parse (pode ser apenas o traceId normal sendo enviado como string)
+        }
       }
     },
     onFinish: ({

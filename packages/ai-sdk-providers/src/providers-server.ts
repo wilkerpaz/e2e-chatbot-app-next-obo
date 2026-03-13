@@ -15,6 +15,7 @@ import { shouldInjectContextForEndpoint } from './request-context';
 // Header keys for passing context through streamText headers
 export const CONTEXT_HEADER_CONVERSATION_ID = 'x-databricks-conversation-id';
 export const CONTEXT_HEADER_USER_ID = 'x-databricks-user-id';
+export const CONTEXT_HEADER_CUSTOM_INPUTS = 'x-databricks-custom-inputs';
 
 // Use centralized authentication - only on server side
 async function getProviderToken(): Promise<string> {
@@ -105,29 +106,48 @@ export const databricksFetch: typeof fetch = async (input, init) => {
   const headers = new Headers(requestInit?.headers);
   const conversationId = headers.get(CONTEXT_HEADER_CONVERSATION_ID);
   const userId = headers.get(CONTEXT_HEADER_USER_ID);
+  const customInputsRaw = headers.get(CONTEXT_HEADER_CUSTOM_INPUTS);
+
   // Remove context headers so they don't get sent to the API
   headers.delete(CONTEXT_HEADER_CONVERSATION_ID);
   headers.delete(CONTEXT_HEADER_USER_ID);
+  headers.delete(CONTEXT_HEADER_CUSTOM_INPUTS);
   requestInit = { ...requestInit, headers };
 
-  // Inject context into request body if appropriate
+  // Inject context and custom_inputs into request body if appropriate
   if (
-    conversationId &&
-    userId &&
     requestInit?.body &&
     typeof requestInit.body === 'string'
   ) {
-    if (shouldInjectContext()) {
+    const shouldInjectCtx = shouldInjectContext() && conversationId && userId;
+    const shouldInjectInputs = !!customInputsRaw;
+
+    if (shouldInjectCtx || shouldInjectInputs) {
       try {
         const body = JSON.parse(requestInit.body);
-        const enhancedBody = {
-          ...body,
-          context: {
+        const enhancedBody = { ...body };
+
+        if (shouldInjectCtx) {
+          enhancedBody.context = {
             ...body.context,
             conversation_id: conversationId,
             user_id: userId,
-          },
-        };
+          };
+        }
+
+        if (shouldInjectInputs && customInputsRaw) {
+          try {
+            const parsedHeader = JSON.parse(customInputsRaw);
+            // Merge header custom_inputs with existing body custom_inputs
+            enhancedBody.custom_inputs = {
+              ...(enhancedBody.custom_inputs || {}),
+              ...parsedHeader,
+            };
+          } catch (e) {
+            console.warn('Failed to parse custom_inputs header', e);
+          }
+        }
+
         requestInit = { ...requestInit, body: JSON.stringify(enhancedBody) };
       } catch {
         // If JSON parsing fails, pass through unchanged

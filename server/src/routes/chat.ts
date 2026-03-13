@@ -242,9 +242,13 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
 
     let finalUsage: LanguageModelUsage | undefined;
     let traceId: string | null = null;
+    let customOutputs: any | null = null;
     const streamId = generateUUID();
+    // Extract custom_inputs safely from request body (outside schema strict validation if necessary)
+    const { custom_inputs } = req.body;
 
     const model = await myProvider.languageModel(selectedChatModel);
+
     const result = streamText({
       model,
       messages: await convertToModelMessages(uiMessages),
@@ -255,6 +259,12 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
       headers: {
         [CONTEXT_HEADER_CONVERSATION_ID]: id,
         [CONTEXT_HEADER_USER_ID]: session.user.email ?? session.user.id,
+        // Pass custom_inputs from client request via header to be intercepted by databricksFetch
+        ...(custom_inputs
+          ? {
+              'x-databricks-custom-inputs': JSON.stringify(custom_inputs),
+            }
+          : {}),
         // Forward OBO user token to the backend/serving endpoint
         ...(req.headers['x-forwarded-access-token']
           ? { 'x-forwarded-access-token': req.headers['x-forwarded-access-token'] as string }
@@ -269,6 +279,10 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
               raw?.databricks_output?.trace?.info?.trace_id;
             if (typeof traceIdFromChunk === 'string') {
               traceId = traceIdFromChunk;
+            }
+            // Captura custom_outputs
+            if (raw?.custom_outputs) {
+              customOutputs = raw.custom_outputs;
             }
           }
           // Extract trace from MLflow AgentServer output format, if present
@@ -316,6 +330,14 @@ chatRouter.post('/', requireAuth, async (req: Request, res: Response) => {
         }
         // Write traceId so the client knows whether feedback is supported.
         writer.write({ type: 'data-traceId', data: traceId });
+        // Workaround to send customOutputs: serialize to JSON and send as a data-traceId part
+        if (customOutputs) {
+          const customDataPayload = {
+            source: 'agentCustomOutputs', // Identifier for the client
+            payload: customOutputs,
+          };
+          writer.write({ type: 'data-traceId', data: JSON.stringify(customDataPayload) });
+        }
       },
       onFinish: async ({ responseMessage }) => {
         // Store in-memory for ephemeral mode (also useful when DB is available)
